@@ -1,46 +1,67 @@
 import google.generativeai as genai
 import os
 import json
+import re
 
-# NOTA IMPORTANTE: La robustez del JSON ahora depende 100% de la IA y del proceso de limpieza.
-# Se eliminaron argumentos 'config' y 'system_instruction' para máxima compatibilidad.
+# NOTA IMPORTANTE: Esta es la solución de MÁXIMA COMPATIBILIDAD.
+# No se usa el argumento 'config' ni se importa ninguna clase de 'types'
+# para evitar los errores de compatibilidad en entornos de Streamlit Cloud con SDKs antiguos.
+# La generación estructurada se fuerza a través de instrucciones estrictas en el prompt y
+# se limpia el texto de la respuesta antes de intentar el parseo JSON.
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 def generar_guiones_gemini(platform, duration, goal, tone, business):
     
-    # TODAS las instrucciones y el formato JSON se pasan en el prompt
-    prompt = f"""
-    INSTRUCCIÓN CRÍTICA: Tu única salida debe ser el objeto JSON. NO incluyas NINGUNA palabra antes o después. NO uses comillas triples o bloques de código (```json).
-
-    Eres un guionista experto en contenido corto para {platform}.
-    Crea 3 guiones creativos y originales para el negocio/marca '{business}', cada uno de aproximadamente {duration} segundos.
-    El objetivo principal es: {goal}.
-    El tono debe ser: {tone}.
-
-    Tu respuesta DEBE ser EXCLUSIVAMENTE un arreglo JSON de 3 objetos, comenzando con [ y terminando con ].
+    # 1. System Instruction para guiar a la IA
+    system_instruction = (
+        f"Eres un guionista experto en contenido corto para {platform}. "
+        f"Tu único trabajo es crear 3 guiones creativos y originales para {business}. "
+        f"Tu respuesta DEBE ser ÚNICAMENTE el arreglo JSON, sin preámbulos, explicaciones o texto adicional."
+    )
     
-    Cada objeto de guion DEBE tener las siguientes 5 claves (y NADA más):
-    1. "Titulo": Un título corto y atractivo para el guion.
-    2. "Hook": El texto o la acción de inicio (máximo 5 segundos).
-    3. "Desarrollo": 3 ideas visuales o acciones clave, separadas por puntos.
-    4. "CTA": La llamada a la acción final, clara y atractiva.
-    5. "Caption": El texto completo del caption con 5 a 7 hashtags integrados.
+    # 2. Definición del formato JSON (incluido en el prompt para guiar al modelo)
+    json_format_description = """
+    El formato de salida debe ser un arreglo JSON con 3 objetos, cada uno con 5 claves:
+    1. "Titulo" (string): Un título corto y atractivo.
+    2. "Hook" (string): El texto o la acción de inicio (máximo 5 segundos).
+    3. "Desarrollo" (string): 3 ideas visuales o acciones clave, separadas por puntos.
+    4. "CTA" (string): La llamada a la acción final, clara y atractiva.
+    5. "Caption" (string): El texto completo del caption con 5 a 7 hashtags integrados.
     """
 
-    # Llamada a la API con la mínima sintaxis compatible
-    model = genai.GenerativeModel("gemini-2.5-flash")
-    response = model.generate_content(prompt)
-    
-    # 6. PASO DE LIMPIEZA CRÍTICO para JSONDecodeError
-    raw_text = response.text.strip()
-    
-    # Intentar limpiar el texto si el modelo lo envolvió en bloques de código
-    if raw_text.startswith('```json'):
-        raw_text = raw_text.lstrip('```json').rstrip('```')
-        raw_text = raw_text.strip() # Limpieza adicional después de quitar las marcas
+    # 3. Prompt de la solicitud del usuario
+    user_prompt = f"""
+    Instrucciones de formato: {json_format_description}
 
-    # 7. Devolver el texto crudo y el objeto Python parseado
-    # La advertencia es que si el modelo pone una frase, el JSONDecodeError persistirá.
-    # Pero el paso de limpieza mejora mucho la probabilidad de éxito.
-    return response.text, json.loads(raw_text)
+    Crea 3 guiones creativos y originales de aproximadamente {duration} segundos cada uno.
+    El objetivo es: {goal}.
+    El tono debe ser {tone}.
+    
+    Responde ÚNICAMENTE con el arreglo JSON.
+    """
+
+    # 4. Llamada a la API (Sin argumento 'config' para máxima compatibilidad)
+    model = genai.GenerativeModel(
+        "gemini-2.5-flash", 
+        system_instruction=system_instruction # Pasamos system_instruction aquí.
+    )
+    
+    response = model.generate_content(user_prompt)
+    raw_text = response.text
+
+    # 5. LIMPIEZA DE TEXTO (para solucionar el JSONDecodeError)
+    cleaned_text = raw_text.strip()
+    
+    # Expresión regular para encontrar el bloque JSON (busca el primer '[' hasta el último ']')
+    json_match = re.search(r'\[.*\]', cleaned_text, re.DOTALL)
+
+    if json_match:
+        # Si encuentra un bloque JSON válido (el arreglo), lo usa
+        json_string = json_match.group(0)
+    else:
+        # Si no lo encuentra, intenta quitar las envolturas comunes de markdown
+        json_string = cleaned_text.replace("```json", "").replace("```", "").strip()
+
+    # Devolver el texto crudo y el objeto Python parseado
+    return raw_text, json.loads(json_string)
