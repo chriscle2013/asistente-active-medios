@@ -10,7 +10,7 @@ import re
 # Define la cantidad máxima de guiones GRATUITOS (1 generación = 3 guiones)
 MAX_FREE_GENERATIONS = 1 
 # Tu correo para hacer bypass a la validación. ¡Asegúrate de definir ADMIN_EMAIL como variable de entorno!
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "tucorreo@ejemplo.com")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "musclev@hotmail.com")
 
 # Función de normalización de email para prevenir "fuzzing" (ej: añadir puntos o '+' sub-direcciones)
 def normalize_email(email):
