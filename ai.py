@@ -2,59 +2,36 @@ import google.generativeai as genai
 import os
 import json
 
-# NOTA IMPORTANTE: La configuración se pasa como un diccionario simple (dict) a generate_content() 
-# para garantizar la compatibilidad con versiones antiguas del SDK, solucionando el error sobre 'config' 
-# no ser un argumento esperado en GenerativeModel.init().
+# NOTA IMPORTANTE: Se eliminaron todos los argumentos 'config' y 'system_instruction' 
+# porque la versión del SDK en su entorno no los soporta. 
+# TODAS las instrucciones (rol y formato JSON) ahora van dentro del prompt para 
+# máxima compatibilidad.
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 def generar_guiones_gemini(platform, duration, goal, tone, business):
     
-    # 1. Definición del esquema JSON para la salida estructurada
-    json_schema = {
-        "type": "array",
-        "items": {
-            "type": "object",
-            "properties": {
-                "Titulo": {"type": "string", "description": "Título atractivo para el guion."},
-                "Hook": {"type": "string", "description": "Texto o acción inicial."},
-                "Desarrollo": {"type": "string", "description": "3 ideas visuales o acciones clave del desarrollo."},
-                "CTA": {"type": "string", "description": "Llamada a la acción final."},
-                "Caption": {"type": "string", "description": "Texto completo del caption con hashtags integrados."}
-            },
-            "required": ["Titulo", "Hook", "Desarrollo", "CTA", "Caption"]
-        }
-    }
+    # TODAS las instrucciones y el formato JSON se pasan en el prompt
+    prompt = f"""
+    Eres un guionista experto en contenido corto para {platform} y tu único trabajo es crear contenido en formato JSON.
+    Crea 3 guiones creativos y originales para el negocio/marca '{business}', cada uno de aproximadamente {duration} segundos.
+    El objetivo principal es: {goal}.
+    El tono debe ser: {tone}.
+
+    Tu respuesta DEBE ser EXCLUSIVAMENTE un arreglo JSON de 3 objetos. NO incluyas texto explicativo, solo el JSON.
     
-    # 2. System Instruction para guiar a la IA
-    system_instruction = (
-        f"Eres un guionista experto en contenido corto para {platform}. "
-        f"Tu único trabajo es crear 3 guiones creativos y originales para {business}. Responde únicamente con el objeto JSON solicitado."
-    )
-    
-    # 3. Prompt de la solicitud del usuario
-    user_prompt = f"""
-    Crea 3 guiones creativos y originales de aproximadamente {duration} segundos cada uno.
-    El objetivo es: {goal}.
-    El tono debe ser {tone}.
-    
-    Debes estructurar tu respuesta EXCLUSIVAMENTE como un arreglo JSON de 3 objetos, siguiendo el esquema proporcionado.
+    Cada objeto de guion DEBE tener las siguientes 5 claves (y NADA más):
+    1. "Titulo": Un título corto y atractivo para el guion.
+    2. "Hook": El texto o la acción de inicio (máximo 5 segundos).
+    3. "Desarrollo": 3 ideas visuales o acciones clave, separadas por puntos.
+    4. "CTA": La llamada a la acción final, clara y atractiva.
+    5. "Caption": El texto completo del caption con 5 a 7 hashtags integrados.
     """
 
-    # 4. Configuración pasada como un DICCIONARIO
-    generation_config = {
-        "system_instruction": system_instruction,
-        "response_mime_type": "application/json",
-        "response_schema": json_schema
-    }
-
-    # 5. Llamada a la API (CORRECCIÓN FINAL: config se pasa a generate_content, no a GenerativeModel)
+    # Llamada a la API con la mínima sintaxis compatible
     model = genai.GenerativeModel("gemini-2.5-flash")
-    
-    response = model.generate_content(
-        user_prompt, 
-        config=generation_config # <-- El argumento 'config' se mueve aquí.
-    )
+    response = model.generate_content(prompt)
     
     # Devolver el texto crudo y el objeto Python parseado
+    # Advertencia: La robustez del JSON ahora depende 100% de la IA y no del esquema forzado.
     return response.text, json.loads(response.text)
