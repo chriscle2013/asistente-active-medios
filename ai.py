@@ -18,5 +18,5 @@ def generar_guiones_gemini(platform, duration, goal, tone, business):
     - Texto de caption con hashtags integrados (no listados aparte).
     """
 
-    response = genai.GenerativeModel("gemini-1.5-flash").generate_content(prompt)
+    response = genai.GenerativeModel("gemini-2.5-flash").generate_content(prompt)
     return response.text
