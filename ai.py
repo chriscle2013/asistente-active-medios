@@ -2,9 +2,9 @@ import google.generativeai as genai
 import os
 import json
 
-# NOTA IMPORTANTE: La configuración de la respuesta estructurada se pasa como un diccionario
-# simple (dict) en el parámetro 'config' para garantizar la compatibilidad con versiones antiguas
-# del SDK de Google Generative AI, solucionando así el error 'has no attribute GenerateContentConfig'.
+# NOTA IMPORTANTE: La configuración se pasa como un diccionario simple (dict) a generate_content() 
+# para garantizar la compatibilidad con versiones antiguas del SDK, solucionando el error sobre 'config' 
+# no ser un argumento esperado en GenerativeModel.init().
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
@@ -41,18 +41,20 @@ def generar_guiones_gemini(platform, duration, goal, tone, business):
     Debes estructurar tu respuesta EXCLUSIVAMENTE como un arreglo JSON de 3 objetos, siguiendo el esquema proporcionado.
     """
 
-    # 4. Configuración pasada como un DICCIONARIO (Solución de Compatibilidad)
+    # 4. Configuración pasada como un DICCIONARIO
     generation_config = {
         "system_instruction": system_instruction,
         "response_mime_type": "application/json",
         "response_schema": json_schema
     }
 
-    # 5. Llamada a la API
-    response = genai.GenerativeModel(
-        "gemini-2.5-flash", 
-        config=generation_config
-    ).generate_content(user_prompt)
+    # 5. Llamada a la API (CORRECCIÓN FINAL: config se pasa a generate_content, no a GenerativeModel)
+    model = genai.GenerativeModel("gemini-2.5-flash")
+    
+    response = model.generate_content(
+        user_prompt, 
+        config=generation_config # <-- El argumento 'config' se mueve aquí.
+    )
     
     # Devolver el texto crudo y el objeto Python parseado
     return response.text, json.loads(response.text)
