@@ -44,7 +44,7 @@ def normalize_email(email):
 
 st.set_page_config(page_title="Asistente Virtual - Active Medios", page_icon="🎥", layout="wide")
 
-st.title("🎬 Asistente Virtual de Active Medios")
+st.title("🎬 Generador de Guiones Virtual de Active Medios")
 st.markdown("Te ayudaré a crear guiones irresistibles para tus Reels, Shorts o TikToks ✨")
 
 # Diseño responsivo para el formulario
