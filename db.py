@@ -1,6 +1,19 @@
 import psycopg2
 import os
 
+# ==============================================================================
+# 🚨 🚨 🚨 INSTRUCCIÓN CRÍTICA DE BASE DE DATOS 🚨 🚨 🚨
+# El error 'there is no unique or exclusion constraint matching the ON CONFLICT specification'
+# ocurre porque la columna 'email' NO es una clave única.
+#
+# PARA SOLUCIONARLO, DEBES EJECUTAR EL SIGUIENTE COMANDO EN TU CONSOLA DE NEON DB:
+#
+# ALTER TABLE leads ADD PRIMARY KEY (email);
+# 
+# Asegúrate también de que la columna 'script_count' exista:
+# ALTER TABLE leads ADD COLUMN script_count INT DEFAULT 0;
+# ------------------------------------------------------------------------------
+
 def get_connection():
     """Establece y devuelve una conexión a la base de datos Neon."""
     # Los detalles de conexión se obtienen de las variables de entorno de Streamlit
@@ -19,9 +32,7 @@ def save_lead(name, normalized_email, business, platform, duration, goal, tone):
     try:
         with get_connection() as conn: 
             with conn.cursor() as cur:
-                # Insertar o actualizar los datos del lead. 
-                # Se usa ON CONFLICT (email) DO UPDATE para actualizar si ya existe,
-                # pero el script_count no se toca aquí para evitar sobreescribir la lógica de conteo.
+                # Usamos ON CONFLICT (email) DO UPDATE. Esto requiere que 'email' sea una clave única/primaria.
                 cur.execute("""
                     INSERT INTO leads (name, email, business, platform, duration, goal, tone)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -65,7 +76,7 @@ def is_usage_allowed_and_record(normalized_email, max_count):
                     new_count = current_count + 1
                     
                     # Insertar un nuevo registro (si no existe) o actualizar el script_count (si ya existe).
-                    # Nota: solo actualizamos 'script_count' aquí, 'save_lead' se encarga de los otros campos.
+                    # Esto solo funciona si 'email' es una clave única.
                     cur.execute("""
                         INSERT INTO leads (email, script_count)
                         VALUES (%s, %s)
