@@ -2,7 +2,7 @@ import google.generativeai as genai
 import os
 import json
 # SOLUCIÓN: Importamos GenerateContentConfig directamente desde types para resolver el error de AttributeError
-from google.generativeai.types import GenerateContentConfig
+genai.types.GenerateContentConfig
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
