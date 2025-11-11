@@ -1,8 +1,8 @@
 import google.generativeai as genai
 import os
 import json
-# SOLUCIÓN: Importamos GenerateContentConfig directamente desde types para resolver el error de AttributeError
-genai.types.GenerateContentConfig
+# NOTA IMPORTANTE: La línea de importación que causaba el error (from google.generativeai.types import GenerateContentConfig)
+# ha sido ELIMINADA. Usamos genai.types.GenerateContentConfig directamente dentro de la función para mayor compatibilidad.
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
@@ -10,7 +10,7 @@ def generar_guiones_gemini(platform, duration, goal, tone, business):
     # System Instruction para guiar a la IA
     system_instruction = (
         f"Eres un guionista experto en contenido corto para {platform}. "
-        f"Tu único trabajo es crear 3 guiones creativos y originales para {business}."
+        f"Tu único trabajo es crear 3 guiones creativos y originales para {business}. Responde únicamente con el objeto JSON solicitado."
     )
     
     # Prompt de la solicitud del usuario
@@ -23,7 +23,7 @@ def generar_guiones_gemini(platform, duration, goal, tone, business):
     Cada objeto de guion debe tener las siguientes 5 claves:
     1. "Titulo": Un título corto y atractivo para el guion.
     2. "Hook": El texto o la acción de inicio (máximo 5 segundos).
-    3. "Desarrollo": 3 ideas visuales o acciones clave, separadas por puntos.
+    3. "Desarrollo": 3 ideas visuales o acciones clave, separadas por puntos, describiendo la acción.
     4. "CTA": La llamada a la acción final, clara y atractiva.
     5. "Caption": El texto completo del caption con 5 a 7 hashtags integrados.
     """
@@ -44,9 +44,10 @@ def generar_guiones_gemini(platform, duration, goal, tone, business):
         }
     }
 
+    # ¡CORRECCIÓN CLAVE!: Usamos genai.types.GenerateContentConfig() para la compatibilidad.
     response = genai.GenerativeModel(
-        "gemini-2.5-flash", # Modelo corregido y usado para JSON estructurado
-        config=GenerateContentConfig( # Usamos GenerateContentConfig importada directamente
+        "gemini-2.5-flash", 
+        config=genai.types.GenerateContentConfig( 
             system_instruction=system_instruction,
             response_mime_type="application/json",
             response_schema=json_schema
