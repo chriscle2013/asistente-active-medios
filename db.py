@@ -3,20 +3,17 @@ import os
 
 # ==============================================================================
 # 🚨 🚨 🚨 INSTRUCCIÓN CRÍTICA DE BASE DE DATOS 🚨 🚨 🚨
-# El error 'there is no unique or exclusion constraint matching the ON CONFLICT specification'
-# ocurre porque la columna 'email' NO es una clave única.
+# El error 'ON CONFLICT' que está experimentando ES UN ERROR DE ESQUEMA DE BASE DE DATOS.
+# DEBE ejecutar el siguiente comando en su consola de Neon DB para que el código funcione:
 #
-# PARA SOLUCIONARLO, DEBES EJECUTAR EL SIGUIENTE COMANDO EN TU CONSOLA DE NEON DB:
+# 1. Ejecute: ALTER TABLE leads ADD COLUMN script_count INT DEFAULT 0;
+# 2. Ejecute: ALTER TABLE leads ADD PRIMARY KEY (email); <--- ESTO SOLUCIONA EL ERROR.
 #
-# ALTER TABLE leads ADD PRIMARY KEY (email);
-# 
-# Asegúrate también de que la columna 'script_count' exista:
-# ALTER TABLE leads ADD COLUMN script_count INT DEFAULT 0;
+# Si la tabla tiene duplicados en la columna 'email', debe limpiarlos antes de ejecutar el comando de clave primaria.
 # ------------------------------------------------------------------------------
 
 def get_connection():
     """Establece y devuelve una conexión a la base de datos Neon."""
-    # Los detalles de conexión se obtienen de las variables de entorno de Streamlit
     conn = psycopg2.connect(
         dbname=os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),
@@ -28,11 +25,11 @@ def get_connection():
     return conn
 
 def save_lead(name, normalized_email, business, platform, duration, goal, tone):
-    """Guarda los datos adicionales del lead. (Nota: El conteo de uso se maneja en 'is_usage_allowed_and_record')."""
+    """Guarda los datos adicionales del lead."""
     try:
         with get_connection() as conn: 
             with conn.cursor() as cur:
-                # Usamos ON CONFLICT (email) DO UPDATE. Esto requiere que 'email' sea una clave única/primaria.
+                # Usamos ON CONFLICT (email) DO UPDATE. Requiere que 'email' sea una clave única/primaria.
                 cur.execute("""
                     INSERT INTO leads (name, email, business, platform, duration, goal, tone)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -47,16 +44,14 @@ def save_lead(name, normalized_email, business, platform, duration, goal, tone):
                 """, (name, normalized_email, business, platform, duration, goal, tone))
             conn.commit()
     except Exception as e:
-        print(f"Error al guardar el lead en Neon DB: {e}")
-        # Re-lanzar la excepción para que app.py pueda mostrar una advertencia al usuario.
+        print(f"Error CRÍTICO al guardar el lead en Neon DB: {e}")
+        # El error es crítico y se notifica.
         raise
 
 def is_usage_allowed_and_record(normalized_email, max_count):
     """
     Verifica el conteo de uso para un email normalizado. 
     Si está permitido, incrementa el contador y retorna True.
-    Si excede el límite (max_count), retorna False.
-    Si el email no existe, lo crea con un conteo de 1 y retorna True.
     """
     try:
         with get_connection() as conn:
@@ -75,7 +70,7 @@ def is_usage_allowed_and_record(normalized_email, max_count):
                     # Uso permitido: registrar/incrementar el uso.
                     new_count = current_count + 1
                     
-                    # Insertar un nuevo registro (si no existe) o actualizar el script_count (si ya existe).
+                    # Insertar un nuevo registro o actualizar el script_count.
                     # Esto solo funciona si 'email' es una clave única.
                     cur.execute("""
                         INSERT INTO leads (email, script_count)
@@ -88,6 +83,7 @@ def is_usage_allowed_and_record(normalized_email, max_count):
                     return True
 
     except Exception as e:
-        print(f"Error al verificar/grabar uso: {e}")
+        # Se imprime el error para el diagnóstico
+        print(f"Error al verificar/grabar uso. ESTO REQUIERE LA CLAVE PRIMARIA EN 'email': {e}")
         # Re-lanzar la excepción para que app.py maneje el fallo de la DB.
         raise
