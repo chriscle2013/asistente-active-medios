@@ -21,12 +21,16 @@ with st.form("lead_form"):
 if submitted:
     if name and email and business and goal:
         with st.spinner("✨ Creando tus guiones personalizados con IA..."):
-            save_lead(name, email, business, platform, duration, goal, tone)
-            guiones = generar_guiones_gemini(platform, duration, goal, tone, business)
+            try:
+                save_lead(name, email, business, platform, duration, goal, tone)
+                guiones, _ = generar_guiones_gemini(platform, duration, goal, tone, business) # Desempacar si la función devuelve tupla
 
-        st.success("¡Listo! Aquí tienes tus guiones 👇")
-        st.markdown(guiones)
-        st.markdown(f"[📲 Enviar mi idea por WhatsApp](https://wa.me/573185538833?text=Hola%20soy%20{name}%20quiero%20crear%20mi%20video%20de%20{platform})")
+                st.success("¡Listo! Aquí tienes tus guiones 👇")
+                st.markdown(guiones)
+                st.markdown(f"[📲 Enviar mi idea por WhatsApp](https://wa.me/573185538833?text=Hola%20soy%20{name}%20quiero%20crear%20mi%20video%20de%20{platform})")
 
+            except Exception as e:
+                st.error("⚠️ Ocurrió un error al generar los guiones (Problema de IA/Conexión). ¡Pero guardamos tu contacto! Te contactaremos pronto. Detalle: " + str(e))
+                # En este punto, si la base de datos funciona, el lead ya se guardó.
     else:
         st.warning("Por favor completa todos los campos antes de generar tus guiones.")
